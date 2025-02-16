@@ -1,0 +1,31 @@
+services:
+  orion:
+    build:
+      context: ../orion/
+      dockerfile: Dockerfile.local
+    hostname: orion
+    environment:
+      # Kubernetes API can be accessed externally, but we assume access from a Pod inside the cluster for simplicity.
+      # Doc: https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/#directly-accessing-the-rest-api
+      - KUBERNETES_SERVICE_HOST=${KUBERNETES_SERVICE_HOST}
+      - KUBERNETES_SERVICE_PORT_HTTPS=${KUBERNETES_SERVICE_PORT_HTTPS}
+      # Use these self-defined (unofficial) env vars for Kubernetes API authentication
+      # instead of reading the entire kubeconfig file.
+      - KUBERNETES_CLIENT_CERT=/var/run/secrets/minikube/client.crt # Mounted as a volume
+      - KUBERNETES_CLIENT_KEY=/var/run/secrets/minikube/client.key # Mounted as a volume
+    volumes:
+      - ../:/usr/src/orion/
+      # Doc: https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/#directly-accessing-the-rest-api
+      - ${HOME}/.minikube/ca.crt:/var/run/secrets/kubernetes.io/serviceaccount/ca.crt:ro
+      # Ref: `KUBERNETES_CLIENT_*` env vars defined above
+      - ${HOME}/.minikube/profiles/${MINIKUBE_CLUSTER_NAME}/client.crt:/var/run/secrets/minikube/client.crt:ro
+      - ${HOME}/.minikube/profiles/${MINIKUBE_CLUSTER_NAME}/client.key:/var/run/secrets/minikube/client.key:ro
+    command: ["bash"]
+    networks:
+      - minikube
+    tty: true
+    working_dir: /usr/src/orion/orion/
+networks:
+  minikube:
+    name: ${MINIKUBE_CLUSTER_NAME}
+    external: true
